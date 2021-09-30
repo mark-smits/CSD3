@@ -1,0 +1,44 @@
+Buizen maten:
+2 x 60 cm
+2 x 50 cm
+2 x 45 cm
+2 x 37.5 cm
+2 x 30 cm
+
+Andere ingrediënten:
+6 meter touw (elke chime krijgt een meter touw)
+Houten plaat van 1 x 1 meter 
+6 Haakjes om het touw aan op te hangen
+6 Bouten van 60 cm lang
+6 Moeren voor said bouten
+6 Meter ijzerdraad
+Printplaat met teensy en bijbehorende
+
+Tools:
+Stevige Krachtige zaag
+Boor
+Kleine figuurzaag
+
+Recept:
+Start met je buizen op juiste maat te snijden.
+Schuur eventueel de grove kanten naar smaak glad.
+Boor daarna een gat door de buis op 5 cm van de bovenkant aan twee tegenoverstaande kanten.
+Steek een bout door de gaten bij elke buis en bevestig deze met een moer per stuk.
+Maak in de buizen met een ijzerdraad een frame waar de lampjes in kunnen rusten.
+Bevestig de lampjes, gyroscopen en piëzo mics in de buizen
+
+Verdeel hierna het touw in even delen van 1 meter.
+Knoop bij elke buis een stuk touw aan de bout.
+
+Snijd de houten plaat in een cirkel of een andere vorm naar wens.
+Verf eventueel de plaat in een mooie kleur.
+Schroef hierin de 6 haakjes op mooi verdeelde plekken.
+Snijdt een gat waar later de kabels doorheen mogen gaan.
+
+Bevestig de printplaat met de teensy aan de bovenkant van de plaat
+
+Hang elke buis aan een haakje
+Leus de kabels via de haakjes naar het gat in het plafond
+Bevestig de kabels hierboven aan de teensy
+
+
