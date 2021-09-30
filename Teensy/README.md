@@ -1,6 +1,12 @@
-Teensy code for ChimeTime can be found here.
+Teensy code for ChimeTime can be found here. To connect in MAX MSP load the COM port the Teensy is connected to. Output values range from -127 to 127. Hardware connections can be found in the Teensy code or in the pdf schematic.
 
 Contents:
 
-1xMPU6050
-Reads 3 axis from both the accelerometer and gyroscope, prints to the serial monitor and outputs accelerometer data over the USB serial bus. To connect in MAX MSP load the COM port the Teensy is connected to. Output values range from -127 to 127. Connections can be found in the Teensy code or in the pdf file.
+1xMPU6050.ino
+Reads 3 axis from both the accelerometer and gyroscope, prints to the serial monitor and outputs accelerometer data over the USB serial bus. 
+
+1xPiezoSensor_values.ino
+Reads values from a piezo representing vibration or kinetic pulses and passes them on over the serial port for use in MAX MSP.
+
+1xPiezoSensor_trigger.ino
+Reads values from a piezo and sends a '1' over the serial port when there is a kinetic pulse, followed by a zero as soon as the kinetic pulse has passed. Functions as a trigger.
