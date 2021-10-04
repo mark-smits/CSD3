@@ -18,9 +18,24 @@ int highestValue = 0;
 unsigned long timeSinceLastChange;
 int lastTriggerValue;
 
+const int numReadings = 100;
+
+int acXReadings[numReadings];
+int acYReadings[numReadings];
+int acZReadings[numReadings];
+int readIndex = 0;
+int acXTotal = 0;
+int acXAverage = 0;
+int acYTotal = 0;
+int acYAverage = 0;
+int acZTotal = 0;
+int acZAverage = 0;
+
 void setup() {
   Serial.begin(9600);//enable serial monitor
-
+  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+    acXReadings[thisReading] = 0;
+  }
   Wire.begin();
   Wire.beginTransmission(MPU1);
   Wire.write(0x6B);// PWR_MGMT_1 register
@@ -39,18 +54,19 @@ void setup() {
   pinMode(led2G, OUTPUT);
   pinMode(led2B, OUTPUT);
 
-  digitalWrite(led1R, LOW);
-  digitalWrite(led1G, LOW);
-  digitalWrite(led1B, LOW);
+  digitalWrite(led1R, HIGH);
+  digitalWrite(led1G, HIGH);
+  digitalWrite(led1B, HIGH);
 
-  digitalWrite(led2R, LOW);
-  digitalWrite(led2G, LOW);
-  digitalWrite(led2B, LOW);
+  digitalWrite(led2R, HIGH);
+  digitalWrite(led2G, HIGH);
+  digitalWrite(led2B, HIGH);
 }
 
 void loop() {
 
   GetMpuValue1(MPU1);
+  SmoothMPU();
   Serial.print("  ");
   Serial.print("|||");
 
@@ -87,12 +103,7 @@ void GetMpuValue1(const int MPU) {
   GyX1 = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
   GyY1 = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ1 = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  acXout[1] = map((AcX1 / 16384.0 * 128), -128, 128, 0, 255);
-  acYout[1] = map((AcY1 / 16384.0 * 128), -128, 128, 0, 256);
-  acZout[1] = map((AcZ1 / 16384.0 * 128), -128, 128, 0, 256);
-  Serial.write(acXout, 4);
-  Serial.write(acYout, 4);
-  Serial.write(acZout, 4);
+  
   Serial.print("AcX = ");
   Serial.print(AcX1);
   Serial.print(" | AcY = ");
@@ -105,4 +116,34 @@ void GetMpuValue1(const int MPU) {
   Serial.print(GyY1);
   Serial.print(" | GyZ = ");
   Serial.println(GyZ1);
+}
+
+void SmoothMPU() {
+  acXTotal = acXTotal - acXReadings[readIndex];
+  acYTotal = acYTotal - acYReadings[readIndex];
+  acZTotal = acZTotal - acZReadings[readIndex];
+
+  acXReadings[readIndex] = AcX1;
+  acYReadings[readIndex] = AcY1;
+  acZReadings[readIndex] = AcZ1;
+
+  acXTotal = acXTotal + acXReadings[readIndex];
+  acYTotal = acYTotal + acYReadings[readIndex];
+  acZTotal = acZTotal + acZReadings[readIndex];
+
+  readIndex = readIndex + 1;
+
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }
+  acXAverage = acXTotal / numReadings;
+  acYAverage = acYTotal / numReadings;
+  acZAverage = acZTotal / numReadings;
+
+  acXout[1] = map((acXAverage / 16384.0 * 128), -128, 128, 0, 255);
+  acYout[1] = map((acYAverage / 16384.0 * 128), -128, 128, 0, 255);
+  acZout[1] = map((acZAverage / 16384.0 * 128), -128, 128, 0, 255);
+  Serial.write(acXout, 3);
+  Serial.write(acYout, 3);
+  Serial.write(acZout, 3);
 }
