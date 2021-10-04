@@ -76,6 +76,15 @@ void loop() {
     timeSinceLastChange = millis();
     lastTriggerValue = 1;
     piezoOut[1] = 1;
+
+    digitalWrite(led1R, random(0,2));
+    digitalWrite(led1G, random(0,2));
+    digitalWrite(led1B, random(0,2));
+
+    digitalWrite(led2R, random(0,2));
+    digitalWrite(led2G, random(0,2));
+    digitalWrite(led2B, random(0,2));
+
     //Serial.println(1);
     Serial.write(piezoOut, 3);
     digitalWrite(13, HIGH);
@@ -103,7 +112,7 @@ void GetMpuValue1(const int MPU) {
   GyX1 = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
   GyY1 = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ1 = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  
+
   Serial.print("AcX = ");
   Serial.print(AcX1);
   Serial.print(" | AcY = ");
