@@ -2,6 +2,9 @@ Teensy code for ChimeTime can be found here. To connect in MAX MSP load the COM 
 
 Contents:
 
+ChimeTime_full.ino
+All functionality combined into one Arduino file. This is the (in progress) code that the Teensy will run for ChimeTime.
+
 1xMPU6050.ino
 Reads 3 axis from both the accelerometer and gyroscope, prints to the serial monitor and outputs accelerometer data over the USB serial bus. 
 
