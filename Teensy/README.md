@@ -1,4 +1,4 @@
-Teensy code for ChimeTime can be found here. To connect in MAX MSP load the COM port the Teensy is connected to. Output values range from -127 to 127. Hardware connections can be found in the Teensy code or in the pdf schematic.
+Teensy code for ChimeTime can be found here. To connect in MAX MSP load the COM port the Teensy is connected to. Output values range from 0 to 256 with 127 representing zero, the MPU6050 being flat and upright. Piezo triggers pass a single 1 followed by 0 when triggered. Hardware connections can be found in the Teensy code or in the pdf schematic.
 
 Contents:
 
