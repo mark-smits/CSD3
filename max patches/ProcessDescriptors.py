@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 # read the data from onsegMarkers fmat save
 with open('onsegMarkers') as f:
@@ -90,3 +91,40 @@ with open('newData', 'w') as f:
         f.write(line)
         f.write('\n')
 f.close()
+
+# sorting indices for each parameter
+rotatedMatrix = np.transpose(newMatrixData)
+for parameter in range(numColumns + numColumnsAD - 1):
+    listToWrite = []
+    paramArray = []
+    sortedArray = []
+    for value in rotatedMatrix[parameter]:
+        paramArray.append(value)
+        sortedArray.append(value)
+        sortedArray.sort()
+    for value in paramArray:
+        listToWrite.append( sortedArray.index(value) )
+    #print(listToWrite)
+    with open('sortedVectorForParam' + str(parameter), 'w') as f:
+        f.write('#obj 1 fmat\n')
+        f.write('#mess 1 size ' + str(numRows) + ' 1\n')
+        values = '#mess 1 set 0 0'
+        for value in listToWrite:
+            values += ' ' + str(value)
+        f.write(values)
+
+'''
+myMatrix = np.zeros([4, 5])
+for row in range(4):
+    for column in range(5):
+        myMatrix[row][column] = random.randint(0, 20)
+sortingColumn = 2
+print(myMatrix)
+
+myMatrix.sort(axis = 0)
+print(myMatrix)
+print(np.transpose(myMatrix))
+
+valueToFind = myMatrix[1][1]
+print(np.where(myMatrix == valueToFind))
+'''
