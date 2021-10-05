@@ -5,6 +5,9 @@ Contents:
 ChimeTime_full.ino
 All functionality combined into one Arduino file. This is the (in progress) code that the Teensy will run for ChimeTime.
 
+ChimeTime_full_50msSustainedTrigger
+Is the same as the other full code, but sends piezo data as a stream instead of single 1 and 0 per trigger. Streams 1 for 50ms when triggered, then continuously sends 0's.
+
 1xMPU6050.ino
 Reads 3 axis from both the accelerometer and gyroscope, prints to the serial monitor and outputs accelerometer data over the USB serial bus. 
 
