@@ -2,12 +2,12 @@ import numpy as np
 import random
 
 # read the data from onsegMarkers fmat save
-with open('onsegMarkers') as f:
+with open('testData.txt') as f:
     onsetLines = f.readlines()
 f.close()
 
 # read the data from onsegMarkersAdditionalData fmat save
-with open('onsegMarkersAdditionalData') as f:
+with open('testDataAD.txt') as f:
     onsetADLines = f.readlines()
 f.close()
 
@@ -20,12 +20,12 @@ for line in onsetADLines:
     onsetADLinesSplit.append(line.split())
 
 # find matrix dimensions
-numRows = int(onsetLinesSplit[1][3])
-numColumns = int(onsetLinesSplit[1][4])
-linesToProcess = len(onsetLinesSplit) - 2
-numRowsAD = int(onsetADLinesSplit[1][3])
-numColumnsAD = int(onsetADLinesSplit[1][4])
-linesToProcessAD = len(onsetADLinesSplit) - 2
+numRows = len(onsetLinesSplit)
+numColumns = len(onsetLinesSplit[0])
+linesToProcess = numRows
+numRowsAD = len(onsetADLinesSplit)
+numColumnsAD = len(onsetADLinesSplit[0])
+linesToProcessAD = numRowsAD
 
 # prepare arrays for data averaging
 valuesToAverage = []
@@ -38,13 +38,8 @@ newADMatrix = np.zeros([numRowsAD, numColumnsAD])
 
 iterator = 0
 for i in range(linesToProcess):
-    onsetLinesSplit[i+2].pop(0)
-    onsetLinesSplit[i+2].pop(0)
-    onsetLinesSplit[i+2].pop(0)
-    onsetLinesSplit[i+2].pop(0)
-    onsetLinesSplit[i+2].pop(0)
-    while onsetLinesSplit[i+2]:
-        item = float(onsetLinesSplit[i+2].pop(0))
+    while onsetLinesSplit[i]:
+        item = float(onsetLinesSplit[i].pop(0))
         row = int(iterator/numColumns)
         column = iterator % numColumns
         iterator += 1
@@ -52,13 +47,8 @@ for i in range(linesToProcess):
 
 iterator = 0
 for i in range(linesToProcessAD):
-    onsetADLinesSplit[i+2].pop(0)
-    onsetADLinesSplit[i+2].pop(0)
-    onsetADLinesSplit[i+2].pop(0)
-    onsetADLinesSplit[i+2].pop(0)
-    onsetADLinesSplit[i+2].pop(0)
-    while onsetADLinesSplit[i+2]:
-        item = float(onsetADLinesSplit[i+2].pop(0))
+    while onsetADLinesSplit[i]:
+        item = float(onsetADLinesSplit[i].pop(0))
         row = int(iterator/numColumnsAD)
         column = iterator % numColumnsAD
         iterator += 1
@@ -78,6 +68,9 @@ for i in range(numRowsAD):
             newMatrixData[iterator][numColumns + j] = np.mean(valuesToAverage[j])
             valuesToAverage[j] = []
         iterator += 1
+        if iterator > numRows - 1:
+            iterator = numRows - 1
+            break
 
 lines = ['#obj 1 fmat']
 lines.append('#mess 1 size ' + str(numRows) + ' ' + str(numColumns + numColumnsAD - 1))
@@ -108,23 +101,13 @@ for parameter in range(numColumns + numColumnsAD - 1):
     with open('sortedVectorForParam' + str(parameter), 'w') as f:
         f.write('#obj 1 fmat\n')
         f.write('#mess 1 size ' + str(numRows) + ' 1\n')
-        values = '#mess 1 set 0 0'
-        for value in listToWrite:
+        values = ''
+        for index, value in enumerate(listToWrite):
+            if index % 5 == 0:
+                values += '\n'
+                f.write(values)
+                values = '#mess 1 set ' + str(index) + ' 0'
             values += ' ' + str(value)
         f.write(values)
-
-'''
-myMatrix = np.zeros([4, 5])
-for row in range(4):
-    for column in range(5):
-        myMatrix[row][column] = random.randint(0, 20)
-sortingColumn = 2
-print(myMatrix)
-
-myMatrix.sort(axis = 0)
-print(myMatrix)
-print(np.transpose(myMatrix))
-
-valueToFind = myMatrix[1][1]
-print(np.where(myMatrix == valueToFind))
-'''
+        f.write('\n')
+        f.write(values)
