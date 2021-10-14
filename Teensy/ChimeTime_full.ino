@@ -20,11 +20,11 @@ byte piezoOut[3] = {3, 0, 252};
 //int highestValue = 0;
 unsigned long timeSinceLastChange;
 int lastTriggerValue;
-const int piezoActivityWindow = 5000;
-int piezoActivityValue;
+const int piezoActivityWindow = 2000;
 unsigned long piezoActivityTimer;
 bool stateHold;
 int holdToggle;
+int piezoValue;
 
 const int numReadings = 100;
 int acXReadings[numReadings];
@@ -37,6 +37,38 @@ int acYTotal = 0;
 int acYAverage = 0;
 int acZTotal = 0;
 int acZAverage = 0;
+
+const int piezoNumReadings = 500;
+int piezoReadings[piezoNumReadings];
+int piezoReadIndex = 0;
+int piezoTotal = 0;
+int piezoAverage = 0;
+
+unsigned long lastLed1Update;
+unsigned long lastLed2Update;
+int r1;
+int r2;
+int targetR1;
+int targetR2;
+int g1;
+int g2;
+int targetG1;
+int targetG2;
+int b1;
+int b2;
+int targetB1;
+int targetB2;
+
+int additionR1;
+int additionR2;
+int additionG1;
+int additionG2;
+int additionB1;
+int additionB2;
+
+int state;
+
+const int ledStepTime = 20;
 
 void setup() {
   Serial.begin(9600);//enable serial monitor
@@ -52,25 +84,52 @@ void setup() {
   pinMode(13, OUTPUT);
   timeSinceLastChange = millis();
   lastTriggerValue = 0;
-  piezoActivityValue = 0;
   piezoActivityTimer = millis();
   stateHold = false;
   holdToggle = 0;
+
+  r1 = 0;
+  r2 = 0;
+  g1 = 0;
+  g2 = 0;
+  b1 = 0;
+  b2 = 0;
+  targetR1 = 0;
+  targetR2 = 0;
+  targetG1 = 0;
+  targetG2 = 0;
+  targetB1 = 0;
+  targetB2 = 0;
+  additionR1 = 0;
+  additionR2 = 0;
+  additionG1 = 0;
+  additionG2 = 0;
+  additionB1 = 0;
+  additionB2 = 0;
+  lastLed1Update = millis();
+  lastLed2Update = millis();
+
+  piezoValue = 0;
+  state = 5;
 }
 
 void loop() {
   GetMpuValue1(MPU1);
   SmoothMPU();
-  Serial.print("  ");
-  Serial.print("|||");
+  //Serial.print("  ");
+  //Serial.print("|||");
 
-  int piezoValue = analogRead(14);//read analog value and put in to the variable
+  piezoValue = analogRead(14);//read analog value and put in to the variable
+  SmoothPiezo();
+  Serial.print("Value: ");
+  Serial.print(piezoValue);
+  Serial.print('\t');
+  
 
   if (piezoValue > 100 && lastTriggerValue == 0 && millis() - timeSinceLastChange > 50) {
     timeSinceLastChange = millis();
     lastTriggerValue = 1;
     piezoOut[1] = 1;
-    piezoActivityValue += 1;
 
     //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
     //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
@@ -86,40 +145,56 @@ void loop() {
     digitalWrite(13, LOW);
   }
 
-  if (holdToggle >= 2) {
-    stateHold = false;
-    holdToggle = 0;
-  }
-
-  if (millis() - piezoActivityTimer > piezoActivityWindow && stateHold == false) {
+  if (millis() - piezoActivityTimer > piezoActivityWindow) {
     piezoActivityTimer = millis();
-    if (piezoActivityValue == 0) {
+    if (piezoAverage < 40) {
       //idle state
-      led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      led2.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-    } else if (piezoActivityValue > 10) {
+      state = 0;
+      targetR1 = 0;
+      additionR1 = (targetR1 - r1) / 255;
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / 255;
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / 255;
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+    } else if (piezoAverage > 200) {
       //heave state
-      led1.fadeIn(255, 0, 0, 20, piezoActivityWindow);
-      led2.fadeIn(255, 0, 0, 20, piezoActivityWindow);
-    } else if (5 < piezoActivityValue <= 10) {
+      state = 3;
+      targetR1 = 255;
+      additionR1 = (targetR1 - r1) / 255;
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / 255;
+      targetB1 = 0;
+      additionB1 = (targetB1 - b1) / 255;
+      //led1.fadeIn(255, 0, 0, 20, piezoActivityWindow);
+      //led2.fadeIn(255, 0, 0, 20, piezoActivityWindow);
+    } else if (100 < piezoAverage <= 200) {
       //medium state
-      led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      led2.fadeIn(255, 40, 40, 20, piezoActivityWindow);
-    } else if (0 < piezoActivityValue <= 5) {
+      state = 2;
+      targetR1 = 255;
+      additionR1 = (targetR1 - r1) / 255;
+      targetG1 = 255;
+      additionG1 = (targetG1 - g1) / 255;
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / 255;
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(255, 40, 40, 20, piezoActivityWindow);
+    } else if (40 < piezoAverage <= 100) {
       //light state
-      led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      led2.fadeIn(200, 40, 100, 20, piezoActivityWindow);
+      state = 1;
+      targetR1 = 0;
+      additionR1 = (targetR1 - r1) / 255;
+      targetG1 = 255;
+      additionG1 = (targetG1 - g1) / 255;
+      targetB1 = 0;
+      additionB1 = (targetB1 - b1) / 255;
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(200, 40, 100, 20, piezoActivityWindow);
     }
-    if (stateHold == false) {
-      stateHold = true;
-    }
-    holdToggle += 1;
-  } else if (millis() - piezoActivityTimer > piezoActivityWindow && stateHold == true) {
-    piezoActivityTimer = millis();
-    holdToggle += 1;
   }
-
-  Serial.write(piezoOut, 3);
+  UpdateLed1();
+  //Serial.write(piezoOut, 3);
 }
 
 void GetMpuValue1(const int MPU) {
@@ -134,7 +209,7 @@ void GetMpuValue1(const int MPU) {
   GyX1 = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
   GyY1 = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ1 = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-
+/*
   Serial.print("AcX = ");
   Serial.print(AcX1);
   Serial.print(" | AcY = ");
@@ -147,6 +222,7 @@ void GetMpuValue1(const int MPU) {
   Serial.print(GyY1);
   Serial.print(" | GyZ = ");
   Serial.println(GyZ1);
+  */
 }
 
 void SmoothMPU() {
@@ -174,7 +250,52 @@ void SmoothMPU() {
   acXout[1] = map((acXAverage / 16384.0 * 128), -128, 128, 0, 255);
   acYout[1] = map((acYAverage / 16384.0 * 128), -128, 128, 0, 255);
   acZout[1] = map((acZAverage / 16384.0 * 128), -128, 128, 0, 255);
-  Serial.write(acXout, 3);
-  Serial.write(acYout, 3);
-  Serial.write(acZout, 3);
+  //Serial.write(acXout, 3);
+  //Serial.write(acYout, 3);
+  //Serial.write(acZout, 3);
+}
+
+void SmoothPiezo() {
+  piezoTotal = piezoTotal - piezoReadings[piezoReadIndex];
+  piezoReadings[piezoReadIndex] = piezoValue;
+  piezoTotal = piezoTotal + piezoReadings[piezoReadIndex];
+  piezoReadIndex = piezoReadIndex + 1;
+  if (piezoReadIndex >= piezoNumReadings) {
+    piezoReadIndex = 0;
+  }
+  piezoAverage = piezoTotal / piezoNumReadings;
+  Serial.print("Average: ");
+  Serial.print(piezoAverage);
+  Serial.print('\n');
+}
+
+void UpdateLed1() {
+  if (r1 != targetR1 && millis() - lastLed1Update > ledStepTime) {
+    //lastLed1Update = millis();
+    r1 += additionR1;
+  } else if (r1 >= 255) {
+    r1 = 255;
+  } else if (r1 <= 0) {
+    r1 = 0;
+  }
+
+  if (g1 != targetG1 && millis() - lastLed1Update > ledStepTime) {
+    //lastLed1Update = millis();
+    g1 += additionG1;
+  } else if (g1 >= 255) {
+    g1 = 255;
+  } else if (g1 < 0) {
+    g1 = 0;
+  }
+
+  if (b1 != targetB1 && millis() - lastLed1Update > ledStepTime) {
+    //lastLed1Update = millis();
+    b1 += additionB1;
+  } else if (b1 >= 255) {
+    b1 = 255;
+  } else if (b1 <= 0) {
+    b1 = 0;
+  }
+
+  led1.setColor(r1, g1, b1);
 }
