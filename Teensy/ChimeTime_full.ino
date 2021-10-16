@@ -20,7 +20,7 @@ byte piezoOut[3] = {3, 0, 252};
 //int highestValue = 0;
 unsigned long timeSinceLastChange;
 int lastTriggerValue;
-const int piezoActivityWindow = 2000;
+const int piezoActivityWindow = 500;
 unsigned long piezoActivityTimer;
 bool stateHold;
 int holdToggle;
@@ -38,37 +38,40 @@ int acYAverage = 0;
 int acZTotal = 0;
 int acZAverage = 0;
 
-const int piezoNumReadings = 500;
+const int piezoNumReadings = 20;
 int piezoReadings[piezoNumReadings];
 int piezoReadIndex = 0;
-int piezoTotal = 0;
-int piezoAverage = 0;
+float piezoTotal = 0.0f;
+float piezoAverage = 0.0f;
+const int zeroAddTimer = 500;
+unsigned long lastZero;
 
 unsigned long lastLed1Update;
 unsigned long lastLed2Update;
-int r1;
-int r2;
+float r1;
+float r2;
 int targetR1;
 int targetR2;
-int g1;
-int g2;
+float g1;
+float g2;
 int targetG1;
 int targetG2;
-int b1;
-int b2;
+float b1;
+float b2;
 int targetB1;
 int targetB2;
 
-int additionR1;
-int additionR2;
-int additionG1;
-int additionG2;
-int additionB1;
-int additionB2;
+float additionR1;
+float additionR2;
+float additionG1;
+float additionG2;
+float additionB1;
+float additionB2;
 
 int state;
 
-const int ledStepTime = 20;
+const int ledStepTime = 100;
+const int slowFactor = 10;
 
 void setup() {
   Serial.begin(9600);//enable serial monitor
@@ -111,89 +114,28 @@ void setup() {
 
   piezoValue = 0;
   state = 5;
+  lastZero = millis();
 }
 
 void loop() {
   GetMpuValue1(MPU1);
   SmoothMPU();
+
   //Serial.print("  ");
   //Serial.print("|||");
 
   piezoValue = analogRead(14);//read analog value and put in to the variable
-  SmoothPiezo();
+  ProcessPiezo();
   Serial.print("Value: ");
   Serial.print(piezoValue);
   Serial.print('\t');
-  
+  Serial.print("Average: ");
+  Serial.print(piezoAverage);
+  Serial.print('\n');
 
-  if (piezoValue > 100 && lastTriggerValue == 0 && millis() - timeSinceLastChange > 50) {
-    timeSinceLastChange = millis();
-    lastTriggerValue = 1;
-    piezoOut[1] = 1;
+  StateMachine();
+  UpdateLeds();
 
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
-    digitalWrite(13, HIGH);
-
-  } else if (lastTriggerValue == 1 && millis() - timeSinceLastChange > 50) {
-    timeSinceLastChange = millis();
-    lastTriggerValue = 0;
-    piezoOut[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
-    digitalWrite(13, LOW);
-  }
-
-  if (millis() - piezoActivityTimer > piezoActivityWindow) {
-    piezoActivityTimer = millis();
-    if (piezoAverage < 40) {
-      //idle state
-      state = 0;
-      targetR1 = 0;
-      additionR1 = (targetR1 - r1) / 255;
-      targetG1 = 0;
-      additionG1 = (targetG1 - g1) / 255;
-      targetB1 = 255;
-      additionB1 = (targetB1 - b1) / 255;
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-    } else if (piezoAverage > 200) {
-      //heave state
-      state = 3;
-      targetR1 = 255;
-      additionR1 = (targetR1 - r1) / 255;
-      targetG1 = 0;
-      additionG1 = (targetG1 - g1) / 255;
-      targetB1 = 0;
-      additionB1 = (targetB1 - b1) / 255;
-      //led1.fadeIn(255, 0, 0, 20, piezoActivityWindow);
-      //led2.fadeIn(255, 0, 0, 20, piezoActivityWindow);
-    } else if (100 < piezoAverage <= 200) {
-      //medium state
-      state = 2;
-      targetR1 = 255;
-      additionR1 = (targetR1 - r1) / 255;
-      targetG1 = 255;
-      additionG1 = (targetG1 - g1) / 255;
-      targetB1 = 255;
-      additionB1 = (targetB1 - b1) / 255;
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(255, 40, 40, 20, piezoActivityWindow);
-    } else if (40 < piezoAverage <= 100) {
-      //light state
-      state = 1;
-      targetR1 = 0;
-      additionR1 = (targetR1 - r1) / 255;
-      targetG1 = 255;
-      additionG1 = (targetG1 - g1) / 255;
-      targetB1 = 0;
-      additionB1 = (targetB1 - b1) / 255;
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(200, 40, 100, 20, piezoActivityWindow);
-    }
-  }
-  UpdateLed1();
   //Serial.write(piezoOut, 3);
 }
 
@@ -209,19 +151,19 @@ void GetMpuValue1(const int MPU) {
   GyX1 = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
   GyY1 = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ1 = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-/*
-  Serial.print("AcX = ");
-  Serial.print(AcX1);
-  Serial.print(" | AcY = ");
-  Serial.print(AcY1);
-  Serial.print(" | AcZ = ");
-  Serial.print(AcZ1);
-  Serial.print(" | GyX = ");
-  Serial.print(GyX1);
-  Serial.print(" | GyY = ");
-  Serial.print(GyY1);
-  Serial.print(" | GyZ = ");
-  Serial.println(GyZ1);
+  /*
+    Serial.print("AcX = ");
+    Serial.print(AcX1);
+    Serial.print(" | AcY = ");
+    Serial.print(AcY1);
+    Serial.print(" | AcZ = ");
+    Serial.print(AcZ1);
+    Serial.print(" | GyX = ");
+    Serial.print(GyX1);
+    Serial.print(" | GyY = ");
+    Serial.print(GyY1);
+    Serial.print(" | GyZ = ");
+    Serial.println(GyZ1);
   */
 }
 
@@ -255,22 +197,128 @@ void SmoothMPU() {
   //Serial.write(acZout, 3);
 }
 
-void SmoothPiezo() {
+void ProcessPiezo() {
+  if (millis() - lastZero > zeroAddTimer) {
+    SmoothPiezo(0);
+    lastZero = millis();
+  }
+
+  if (piezoValue > 100 && lastTriggerValue == 0 && millis() - timeSinceLastChange > 50) {
+    timeSinceLastChange = millis();
+    lastTriggerValue = 1;
+    piezoOut[1] = 1;
+    SmoothPiezo(1);
+
+    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
+    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    digitalWrite(13, HIGH);
+
+  } else if (lastTriggerValue == 1 && millis() - timeSinceLastChange > 50) {
+    timeSinceLastChange = millis();
+    lastTriggerValue = 0;
+    piezoOut[1] = 0;
+    //Serial.println(0);
+    //Serial.println("---------");
+    //Serial.write(piezoOut, 3);
+    digitalWrite(13, LOW);
+  }
+}
+
+void SmoothPiezo(int piezoData) {
   piezoTotal = piezoTotal - piezoReadings[piezoReadIndex];
-  piezoReadings[piezoReadIndex] = piezoValue;
+  piezoReadings[piezoReadIndex] = piezoData;
   piezoTotal = piezoTotal + piezoReadings[piezoReadIndex];
   piezoReadIndex = piezoReadIndex + 1;
   if (piezoReadIndex >= piezoNumReadings) {
     piezoReadIndex = 0;
   }
   piezoAverage = piezoTotal / piezoNumReadings;
-  Serial.print("Average: ");
-  Serial.print(piezoAverage);
-  Serial.print('\n');
 }
 
-void UpdateLed1() {
-  if (r1 != targetR1 && millis() - lastLed1Update > ledStepTime) {
+void StateMachine() {
+  if (millis() - piezoActivityTimer > piezoActivityWindow) {
+    piezoActivityTimer = millis();
+    if (0 < piezoAverage && piezoAverage <= 0.20) {
+      //light state
+      state = 1;
+      targetR1 = 0;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 0;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 255;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 0;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(200, 40, 100, 20, piezoActivityWindow);
+    }
+    if (piezoAverage <= 0) {
+      //idle state
+      state = 0;
+      targetR1 = 0;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 0;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 0;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 255;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+    }
+    if (piezoAverage > 0.70) {
+      //heave state
+      state = 3;
+      targetR1 = 255;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 0;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 255;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 0;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 0;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+      //led1.fadeIn(255, 0, 0, 20, piezoActivityWindow);
+      //led2.fadeIn(255, 0, 0, 20, piezoActivityWindow);
+    }
+    if (0.20 < piezoAverage && piezoAverage <= 0.70) {
+      //medium state
+      state = 2;
+      targetR1 = 255;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 0;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 0;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 255;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 255;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 0;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
+      //led2.fadeIn(255, 40, 40, 20, piezoActivityWindow);
+    }
+  }
+}
+
+void UpdateLeds() {
+  if (r1 != targetR1) {
     //lastLed1Update = millis();
     r1 += additionR1;
   } else if (r1 >= 255) {
@@ -279,12 +327,12 @@ void UpdateLed1() {
     r1 = 0;
   }
 
-  if (g1 != targetG1 && millis() - lastLed1Update > ledStepTime) {
+  if (g1 != targetG1) {
     //lastLed1Update = millis();
     g1 += additionG1;
   } else if (g1 >= 255) {
     g1 = 255;
-  } else if (g1 < 0) {
+  } else if (g1 <= 0) {
     g1 = 0;
   }
 
@@ -297,5 +345,33 @@ void UpdateLed1() {
     b1 = 0;
   }
 
+  if (r2 != targetR2) {
+    //lastLed1Update = millis();
+    r2 += additionR2;
+  } else if (r2 >= 255) {
+    r2 = 255;
+  } else if (r2 <= 0) {
+    r2 = 0;
+  }
+
+  if (g2 != targetG2) {
+    //lastLed1Update = millis();
+    g2 += additionG2;
+  } else if (g2 >= 255) {
+    g2 = 255;
+  } else if (g2 <= 0) {
+    g2 = 0;
+  }
+
+  if (b2 != targetB2 && millis() - lastLed1Update > ledStepTime) {
+    //lastLed1Update = millis();
+    b2 += additionB2;
+  } else if (b2 >= 255) {
+    b2 = 255;
+  } else if (b2 <= 0) {
+    b2 = 0;
+  }
+  //lastLed1Update = millis();
   led1.setColor(r1, g1, b1);
+  led2.setColor(r2, g2, b2);
 }
