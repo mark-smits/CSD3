@@ -1,7 +1,27 @@
 /*
-   Led1 R to pin 10, G to pin 9, B to pin 6
-   Led2 R to pin 5, G to pin 4, B to pin 3
+   ChimeTime 16-OCT-2021
+   Full version of Teensy code
 
+   A simple overview of the functionality of the different components can be found in README.md in the Teensy folder in the Git repo.
+
+   Connections:
+
+     LED's:
+      LED1 R to pin 10, G to pin 9, B to pin 6 (82ohm resistors in series for each R, G and B pins), cathode to GND
+      LED2 R to pin 5, G to pin 4, B to pin 3 (82ohm resistors in series for each R, G and B pins), cathode to GND
+
+     Piezo's:
+      - Piezo's to GND
+      - Piezo's to pin 14, 15, 16, 17, 20 respectively
+      - 47k resistor between A0 and GND (or between the Piezo poles, it's physically the same thing)
+
+     MPU6050:
+      - 3.3V to VCC
+      - GND to GND
+      - SCL to pin 19
+      - SDA to pin 18
+      - 4.7k pickup resistor between 3.3V and SCL
+      - 4.7k pickup resistor between 3.3V and SDA
 */
 
 #include <RGBLed.h>
@@ -15,16 +35,33 @@ int16_t AcX1, AcY1, AcZ1, Tmp1, GyX1, GyY1, GyZ1;
 byte acXout[3] = {0, 0, 255};
 byte acYout[3] = {1, 0, 254};
 byte acZout[3] = {2, 0, 253};
-byte piezoOut[3] = {3, 0, 252};
+byte piezo1Out[3] = {3, 0, 252};
+byte piezo2Out[3] = {4, 0, 251};
+byte piezo3Out[3] = {5, 0, 250};
+byte piezo4Out[3] = {6, 0, 249};
+byte piezo5Out[3] = {7, 0, 248};
 
-//int highestValue = 0;
-unsigned long timeSinceLastChange;
-int lastTriggerValue;
+unsigned long timeSinceLastChange1;
+int lastTriggerValue1 = 0;
+unsigned long timeSinceLastChange2;
+int lastTriggerValue2 = 0;
+unsigned long timeSinceLastChange3;
+int lastTriggerValue3 = 0;
+unsigned long timeSinceLastChange4;
+int lastTriggerValue4 = 0;
+unsigned long timeSinceLastChange5;
+int lastTriggerValue5 = 0;
+
+const int piezoRetriggerBuffer = 50;
+
 const int piezoActivityWindow = 500;
 unsigned long piezoActivityTimer;
-bool stateHold;
-int holdToggle;
-int piezoValue;
+
+int piezoValue1 = 0;
+int piezoValue2 = 0;
+int piezoValue3 = 0;
+int piezoValue4 = 0;
+int piezoValue5 = 0;
 
 const int numReadings = 100;
 int acXReadings[numReadings];
@@ -46,31 +83,27 @@ float piezoAverage = 0.0f;
 const int zeroAddTimer = 500;
 unsigned long lastZero;
 
-unsigned long lastLed1Update;
-unsigned long lastLed2Update;
-float r1;
-float r2;
-int targetR1;
-int targetR2;
-float g1;
-float g2;
-int targetG1;
-int targetG2;
-float b1;
-float b2;
-int targetB1;
-int targetB2;
+float r1 = 0;
+float r2 = 0;
+int targetR1 = 0;
+int targetR2 = 0;
+float g1 = 0;
+float g2 = 0;
+int targetG1 = 0;
+int targetG2 = 0;
+float b1 = 0;
+float b2 = 0;
+int targetB1 = 0;
+int targetB2 = 0;
 
-float additionR1;
-float additionR2;
-float additionG1;
-float additionG2;
-float additionB1;
-float additionB2;
+float additionR1 = 0;
+float additionR2 = 0;
+float additionG1 = 0;
+float additionG2 = 0;
+float additionB1 = 0;
+float additionB2 = 0;
 
-int state;
-
-const int ledStepTime = 100;
+int state = 0;
 const int slowFactor = 10;
 
 void setup() {
@@ -83,55 +116,29 @@ void setup() {
   Wire.write(0x6B);// PWR_MGMT_1 register
   Wire.write(0); // set to zero (wakes up the MPU-6050)
   Wire.endTransmission(true);
-
   pinMode(13, OUTPUT);
-  timeSinceLastChange = millis();
-  lastTriggerValue = 0;
+
+  timeSinceLastChange1 = millis();
+  timeSinceLastChange2 = millis();
+  timeSinceLastChange3 = millis();
+  timeSinceLastChange4 = millis();
+  timeSinceLastChange5 = millis();
   piezoActivityTimer = millis();
-  stateHold = false;
-  holdToggle = 0;
-
-  r1 = 0;
-  r2 = 0;
-  g1 = 0;
-  g2 = 0;
-  b1 = 0;
-  b2 = 0;
-  targetR1 = 0;
-  targetR2 = 0;
-  targetG1 = 0;
-  targetG2 = 0;
-  targetB1 = 0;
-  targetB2 = 0;
-  additionR1 = 0;
-  additionR2 = 0;
-  additionG1 = 0;
-  additionG2 = 0;
-  additionB1 = 0;
-  additionB2 = 0;
-  lastLed1Update = millis();
-  lastLed2Update = millis();
-
-  piezoValue = 0;
-  state = 5;
   lastZero = millis();
 }
 
 void loop() {
   GetMpuValue1(MPU1);
   SmoothMPU();
+  //PrintMPU();
 
-  //Serial.print("  ");
-  //Serial.print("|||");
-
-  piezoValue = analogRead(14);//read analog value and put in to the variable
-  ProcessPiezo();
-  Serial.print("Value: ");
-  Serial.print(piezoValue);
-  Serial.print('\t');
-  Serial.print("Average: ");
-  Serial.print(piezoAverage);
-  Serial.print('\n');
+  piezoValue1 = analogRead(14);
+  piezoValue2 = analogRead(15);
+  piezoValue3 = analogRead(16);
+  piezoValue4 = analogRead(17);
+  piezoValue5 = analogRead(20);
+  ProcessPiezos();
+  //PrintPiezos();
 
   StateMachine();
   UpdateLeds();
@@ -151,20 +158,23 @@ void GetMpuValue1(const int MPU) {
   GyX1 = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
   GyY1 = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ1 = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  /*
-    Serial.print("AcX = ");
-    Serial.print(AcX1);
-    Serial.print(" | AcY = ");
-    Serial.print(AcY1);
-    Serial.print(" | AcZ = ");
-    Serial.print(AcZ1);
-    Serial.print(" | GyX = ");
-    Serial.print(GyX1);
-    Serial.print(" | GyY = ");
-    Serial.print(GyY1);
-    Serial.print(" | GyZ = ");
-    Serial.println(GyZ1);
-  */
+}
+
+void PrintMPU() {
+  Serial.print("  ");
+  Serial.print("|||");
+  Serial.print("AcX = ");
+  Serial.print(AcX1);
+  Serial.print(" | AcY = ");
+  Serial.print(AcY1);
+  Serial.print(" | AcZ = ");
+  Serial.print(AcZ1);
+  Serial.print(" | GyX = ");
+  Serial.print(GyX1);
+  Serial.print(" | GyY = ");
+  Serial.print(GyY1);
+  Serial.print(" | GyZ = ");
+  Serial.println(GyZ1);
 }
 
 void SmoothMPU() {
@@ -197,26 +207,101 @@ void SmoothMPU() {
   //Serial.write(acZout, 3);
 }
 
-void ProcessPiezo() {
+void ProcessPiezos() {
   if (millis() - lastZero > zeroAddTimer) {
-    SmoothPiezo(0);
+    AveragePiezo(0);
     lastZero = millis();
   }
 
-  if (piezoValue > 100 && lastTriggerValue == 0 && millis() - timeSinceLastChange > 50) {
-    timeSinceLastChange = millis();
-    lastTriggerValue = 1;
-    piezoOut[1] = 1;
-    SmoothPiezo(1);
+  if (piezoValue1 > 100 && lastTriggerValue1 == 0 && millis() - timeSinceLastChange1 > piezoRetriggerBuffer) {
+    timeSinceLastChange1 = millis();
+    lastTriggerValue1 = 1;
+    piezo1Out[1] = 1;
+    AveragePiezo(1);
 
     //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
     //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
     digitalWrite(13, HIGH);
+  } else if (lastTriggerValue1 == 1 && millis() - timeSinceLastChange1 > piezoRetriggerBuffer) {
+    timeSinceLastChange1 = millis();
+    lastTriggerValue1 = 0;
+    piezo1Out[1] = 0;
+    //Serial.println(0);
+    //Serial.println("---------");
+    //Serial.write(piezoOut, 3);
+    digitalWrite(13, LOW);
+  }
 
-  } else if (lastTriggerValue == 1 && millis() - timeSinceLastChange > 50) {
-    timeSinceLastChange = millis();
-    lastTriggerValue = 0;
-    piezoOut[1] = 0;
+  if (piezoValue2 > 100 && lastTriggerValue2 == 0 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
+    timeSinceLastChange2 = millis();
+    lastTriggerValue2 = 1;
+    piezo2Out[1] = 1;
+    AveragePiezo(1);
+
+    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
+    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    digitalWrite(13, HIGH);
+  } else if (lastTriggerValue2 == 1 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
+    timeSinceLastChange2 = millis();
+    lastTriggerValue2 = 0;
+    piezo2Out[1] = 0;
+    //Serial.println(0);
+    //Serial.println("---------");
+    //Serial.write(piezoOut, 3);
+    digitalWrite(13, LOW);
+  }
+
+  if (piezoValue3 > 100 && lastTriggerValue3 == 0 && millis() - timeSinceLastChange3 > piezoRetriggerBuffer) {
+    timeSinceLastChange3 = millis();
+    lastTriggerValue3 = 1;
+    piezo3Out[1] = 1;
+    AveragePiezo(1);
+
+    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
+    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    digitalWrite(13, HIGH);
+  } else if (lastTriggerValue3 == 1 && millis() - timeSinceLastChange3 > piezoRetriggerBuffer) {
+    timeSinceLastChange3 = millis();
+    lastTriggerValue3 = 0;
+    piezo3Out[1] = 0;
+    //Serial.println(0);
+    //Serial.println("---------");
+    //Serial.write(piezoOut, 3);
+    digitalWrite(13, LOW);
+  }
+
+  if (piezoValue4 > 100 && lastTriggerValue4 == 0 && millis() - timeSinceLastChange4 > piezoRetriggerBuffer) {
+    timeSinceLastChange4 = millis();
+    lastTriggerValue4 = 1;
+    piezo4Out[1] = 1;
+    AveragePiezo(1);
+
+    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
+    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    digitalWrite(13, HIGH);
+  } else if (lastTriggerValue4 == 1 && millis() - timeSinceLastChange4 > piezoRetriggerBuffer) {
+    timeSinceLastChange4 = millis();
+    lastTriggerValue4 = 0;
+    piezo4Out[1] = 0;
+    //Serial.println(0);
+    //Serial.println("---------");
+    //Serial.write(piezoOut, 3);
+    digitalWrite(13, LOW);
+  }
+
+  if (piezoValue5 > 100 && lastTriggerValue5 == 0 && millis() - timeSinceLastChange5 > piezoRetriggerBuffer) {
+    timeSinceLastChange5 = millis();
+    lastTriggerValue5 = 1;
+    piezo5Out[1] = 1;
+    AveragePiezo(1);
+
+    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
+    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    digitalWrite(13, HIGH);
+  } else if (lastTriggerValue5 == 1 && millis() - timeSinceLastChange5 > piezoRetriggerBuffer) {
+    timeSinceLastChange5 = millis();
+    lastTriggerValue5 = 0;
+    piezo5Out[1] = 0;
     //Serial.println(0);
     //Serial.println("---------");
     //Serial.write(piezoOut, 3);
@@ -224,7 +309,7 @@ void ProcessPiezo() {
   }
 }
 
-void SmoothPiezo(int piezoData) {
+void AveragePiezo(int piezoData) {
   piezoTotal = piezoTotal - piezoReadings[piezoReadIndex];
   piezoReadings[piezoReadIndex] = piezoData;
   piezoTotal = piezoTotal + piezoReadings[piezoReadIndex];
@@ -233,6 +318,27 @@ void SmoothPiezo(int piezoData) {
     piezoReadIndex = 0;
   }
   piezoAverage = piezoTotal / piezoNumReadings;
+}
+
+void PrintPiezos() {
+  Serial.print("Value1: ");
+  Serial.print(piezoValue1);
+  Serial.print('\t');
+  Serial.print("Value2: ");
+  Serial.print(piezoValue2);
+  Serial.print('\t');
+  Serial.print("Value3: ");
+  Serial.print(piezoValue3);
+  Serial.print('\t');
+  Serial.print("Value4: ");
+  Serial.print(piezoValue4);
+  Serial.print('\t');
+  Serial.print("Value5: ");
+  Serial.print(piezoValue5);
+  Serial.print('\t');
+  Serial.print("Average: ");
+  Serial.print(piezoAverage);
+  Serial.print('\n');
 }
 
 void StateMachine() {
@@ -319,7 +425,6 @@ void StateMachine() {
 
 void UpdateLeds() {
   if (r1 != targetR1) {
-    //lastLed1Update = millis();
     r1 += additionR1;
   } else if (r1 >= 255) {
     r1 = 255;
@@ -328,7 +433,6 @@ void UpdateLeds() {
   }
 
   if (g1 != targetG1) {
-    //lastLed1Update = millis();
     g1 += additionG1;
   } else if (g1 >= 255) {
     g1 = 255;
@@ -336,8 +440,7 @@ void UpdateLeds() {
     g1 = 0;
   }
 
-  if (b1 != targetB1 && millis() - lastLed1Update > ledStepTime) {
-    //lastLed1Update = millis();
+  if (b1 != targetB1) {
     b1 += additionB1;
   } else if (b1 >= 255) {
     b1 = 255;
@@ -346,7 +449,6 @@ void UpdateLeds() {
   }
 
   if (r2 != targetR2) {
-    //lastLed1Update = millis();
     r2 += additionR2;
   } else if (r2 >= 255) {
     r2 = 255;
@@ -355,7 +457,6 @@ void UpdateLeds() {
   }
 
   if (g2 != targetG2) {
-    //lastLed1Update = millis();
     g2 += additionG2;
   } else if (g2 >= 255) {
     g2 = 255;
@@ -363,15 +464,13 @@ void UpdateLeds() {
     g2 = 0;
   }
 
-  if (b2 != targetB2 && millis() - lastLed1Update > ledStepTime) {
-    //lastLed1Update = millis();
+  if (b2 != targetB2) {
     b2 += additionB2;
   } else if (b2 >= 255) {
     b2 = 255;
   } else if (b2 <= 0) {
     b2 = 0;
   }
-  //lastLed1Update = millis();
   led1.setColor(r1, g1, b1);
   led2.setColor(r2, g2, b2);
 }
