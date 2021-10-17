@@ -1,10 +1,11 @@
 /*
-   ChimeTime 16-OCT-2021
+   ChimeTime 17-OCT-2021
    Full version of Teensy code
 
-   A simple overview of the functionality of the different components can be found in README.md in the Teensy folder in the Git repo.
+   A simple overview of the functionality of the different components can be found in README.md in the Teensy folder in the Git repo. 
+   Hardware connections can also be found in schematic form in ChimeTime_technical_schematic in the main folder of the repo.
 
-   Connections:
+   Hardware connections:
 
      LED's:
       LED1 R to pin 10, G to pin 9, B to pin 6 (82ohm resistors in series for each R, G and B pins), cathode to GND
@@ -22,6 +23,22 @@
       - SDA to pin 18
       - 4.7k pickup resistor between 3.3V and SCL
       - 4.7k pickup resistor between 3.3V and SDA
+
+   Software connections:
+   Unpack the 3 values from the serial object in MAX. 1st and 3rd integers are address, 2nd integer is the actual value associated to the variable.
+
+     Accelerometer: (values from 0 to 256 with 128 representing 0)
+      - acX is received on 0, 255
+      - acY is received on 1, 254
+      - acZ is received on 2, 253
+     
+     Piezos: (values are either 1 or 0 and can be send either as a stream or as triggers (look for instructions to comment/uncomment in code))
+      - piezo1 is received on 3, 252
+      - piezo2 is received on 4, 251
+      - piezo3 is received on 5, 250
+      - piezo4 is received on 6, 249
+      - piezo5 is received on 7, 248
+      - piezoAverage is received on 8, 247 (this is a value between 0 and 100 representing piezo trigger frequency aka 'how much are the pipes being hit or hitting eachother'
 */
 
 #include <RGBLed.h>
@@ -40,6 +57,7 @@ byte piezo2Out[3] = {4, 0, 251};
 byte piezo3Out[3] = {5, 0, 250};
 byte piezo4Out[3] = {6, 0, 249};
 byte piezo5Out[3] = {7, 0, 248};
+byte piezoAverageOut[3] = {8, 0, 247};
 
 unsigned long timeSinceLastChange1;
 int lastTriggerValue1 = 0;
@@ -137,13 +155,20 @@ void loop() {
   piezoValue3 = analogRead(16);
   piezoValue4 = analogRead(17);
   piezoValue5 = analogRead(20);
+
   ProcessPiezos();
   //PrintPiezos();
 
   StateMachine();
   UpdateLeds();
-
-  //Serial.write(piezoOut, 3);
+  /*
+    In case of piezo data streaming in stead of sending single 1/0 triggers, use/uncomment these:
+    Serial.write(piezo1Out, 3);
+    Serial.write(piezo2Out, 3);
+    Serial.write(piezo3Out, 3);
+    Serial.write(piezo4Out, 3);
+    Serial.write(piezo5Out, 3);
+  */
 }
 
 void GetMpuValue1(const int MPU) {
@@ -202,12 +227,13 @@ void SmoothMPU() {
   acXout[1] = map((acXAverage / 16384.0 * 128), -128, 128, 0, 255);
   acYout[1] = map((acYAverage / 16384.0 * 128), -128, 128, 0, 255);
   acZout[1] = map((acZAverage / 16384.0 * 128), -128, 128, 0, 255);
-  //Serial.write(acXout, 3);
-  //Serial.write(acYout, 3);
-  //Serial.write(acZout, 3);
+  Serial.write(acXout, 3);
+  Serial.write(acYout, 3);
+  Serial.write(acZout, 3);
 }
 
 void ProcessPiezos() {
+  // In case of piezo data streaming in stead of sending single 1/0 triggers, uncomment all Serial.write in this fucntion
   if (millis() - lastZero > zeroAddTimer) {
     AveragePiezo(0);
     lastZero = millis();
@@ -218,36 +244,27 @@ void ProcessPiezos() {
     lastTriggerValue1 = 1;
     piezo1Out[1] = 1;
     AveragePiezo(1);
-
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    Serial.write(piezo1Out, 3);
     digitalWrite(13, HIGH);
   } else if (lastTriggerValue1 == 1 && millis() - timeSinceLastChange1 > piezoRetriggerBuffer) {
     timeSinceLastChange1 = millis();
     lastTriggerValue1 = 0;
     piezo1Out[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
+    Serial.write(piezo1Out, 3);
     digitalWrite(13, LOW);
   }
-
   if (piezoValue2 > 100 && lastTriggerValue2 == 0 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
     timeSinceLastChange2 = millis();
     lastTriggerValue2 = 1;
     piezo2Out[1] = 1;
     AveragePiezo(1);
-
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    Serial.write(piezo2Out, 3);
     digitalWrite(13, HIGH);
   } else if (lastTriggerValue2 == 1 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
     timeSinceLastChange2 = millis();
     lastTriggerValue2 = 0;
     piezo2Out[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
+    Serial.write(piezo2Out, 3);
     digitalWrite(13, LOW);
   }
 
@@ -256,17 +273,13 @@ void ProcessPiezos() {
     lastTriggerValue3 = 1;
     piezo3Out[1] = 1;
     AveragePiezo(1);
-
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    Serial.write(piezo3Out, 3);
     digitalWrite(13, HIGH);
   } else if (lastTriggerValue3 == 1 && millis() - timeSinceLastChange3 > piezoRetriggerBuffer) {
     timeSinceLastChange3 = millis();
     lastTriggerValue3 = 0;
     piezo3Out[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
+    Serial.write(piezo3Out, 3);
     digitalWrite(13, LOW);
   }
 
@@ -275,17 +288,13 @@ void ProcessPiezos() {
     lastTriggerValue4 = 1;
     piezo4Out[1] = 1;
     AveragePiezo(1);
-
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    Serial.write(piezo4Out, 3);
     digitalWrite(13, HIGH);
   } else if (lastTriggerValue4 == 1 && millis() - timeSinceLastChange4 > piezoRetriggerBuffer) {
     timeSinceLastChange4 = millis();
     lastTriggerValue4 = 0;
     piezo4Out[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
+    Serial.write(piezo4Out, 3);
     digitalWrite(13, LOW);
   }
 
@@ -294,17 +303,13 @@ void ProcessPiezos() {
     lastTriggerValue5 = 1;
     piezo5Out[1] = 1;
     AveragePiezo(1);
-
-    //led1.setColor(random(0, 256), random(0, 256), random(0, 256));
-    //led2.setColor(random(0, 256), random(0, 256), random(0, 256));
+    Serial.write(piezo5Out, 3);
     digitalWrite(13, HIGH);
   } else if (lastTriggerValue5 == 1 && millis() - timeSinceLastChange5 > piezoRetriggerBuffer) {
     timeSinceLastChange5 = millis();
     lastTriggerValue5 = 0;
     piezo5Out[1] = 0;
-    //Serial.println(0);
-    //Serial.println("---------");
-    //Serial.write(piezoOut, 3);
+    Serial.write(piezo5Out, 3);
     digitalWrite(13, LOW);
   }
 }
@@ -318,6 +323,8 @@ void AveragePiezo(int piezoData) {
     piezoReadIndex = 0;
   }
   piezoAverage = piezoTotal / piezoNumReadings;
+  piezoAverageOut[1] = piezoAverage * 100;
+  Serial.write(piezoAverageOut, 3);
 }
 
 void PrintPiezos() {
@@ -360,8 +367,6 @@ void StateMachine() {
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
       targetB2 = 0;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(200, 40, 100, 20, piezoActivityWindow);
     }
     if (piezoAverage <= 0) {
       //idle state
@@ -379,8 +384,6 @@ void StateMachine() {
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
       targetB2 = 255;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(40, 40, 255, 20, piezoActivityWindow);
     }
     if (piezoAverage > 0.70) {
       //heave state
@@ -398,8 +401,6 @@ void StateMachine() {
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
       targetB2 = 0;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
-      //led1.fadeIn(255, 0, 0, 20, piezoActivityWindow);
-      //led2.fadeIn(255, 0, 0, 20, piezoActivityWindow);
     }
     if (0.20 < piezoAverage && piezoAverage <= 0.70) {
       //medium state
@@ -417,8 +418,6 @@ void StateMachine() {
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
       targetB2 = 0;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
-      //led1.fadeIn(40, 40, 255, 20, piezoActivityWindow);
-      //led2.fadeIn(255, 40, 40, 20, piezoActivityWindow);
     }
   }
 }
