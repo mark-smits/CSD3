@@ -39,6 +39,8 @@
       - piezo4 is received on 6, 249
       - piezo5 is received on 7, 248
       - piezoAverage is received on 8, 247 (this is a value between 0 and 100 representing piezo trigger frequency aka 'how much are the pipes being hit or hitting eachother'
+
+      State is received on 9, 246 with the value being either 0 for idle, 1 for light, 2 for medium and 3 for heavy
 */
 
 #include <RGBLed.h>
@@ -58,6 +60,7 @@ byte piezo3Out[3] = {5, 0, 250};
 byte piezo4Out[3] = {6, 0, 249};
 byte piezo5Out[3] = {7, 0, 248};
 byte piezoAverageOut[3] = {8, 0, 247};
+byte stateOut[3] = {9, 0, 246};
 
 unsigned long timeSinceLastChange1;
 int lastTriggerValue1 = 0;
@@ -354,6 +357,8 @@ void StateMachine() {
     if (0 < piezoAverage && piezoAverage <= 0.20) {
       //light state
       state = 1;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
       targetR1 = 0;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
       targetG1 = 0;
@@ -371,6 +376,8 @@ void StateMachine() {
     if (piezoAverage <= 0) {
       //idle state
       state = 0;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
       targetR1 = 0;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
       targetG1 = 0;
@@ -388,6 +395,8 @@ void StateMachine() {
     if (piezoAverage > 0.70) {
       //heave state
       state = 3;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
       targetR1 = 255;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
       targetG1 = 0;
@@ -405,6 +414,8 @@ void StateMachine() {
     if (0.20 < piezoAverage && piezoAverage <= 0.70) {
       //medium state
       state = 2;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
       targetR1 = 255;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
       targetG1 = 0;
