@@ -73,7 +73,7 @@ int lastTriggerValue4 = 0;
 unsigned long timeSinceLastChange5;
 int lastTriggerValue5 = 0;
 
-const int piezoRetriggerBuffer = 50;
+const int piezoRetriggerBuffer = 100;
 
 const int piezoActivityWindow = 500;
 unsigned long piezoActivityTimer;
@@ -160,7 +160,7 @@ void loop() {
   piezoValue5 = analogRead(20);
 
   ProcessPiezos();
-  //PrintPiezos();
+  PrintPiezos();
 
   StateMachine();
   UpdateLeds();
@@ -242,7 +242,7 @@ void ProcessPiezos() {
     lastZero = millis();
   }
 
-  if (piezoValue1 > 100 && lastTriggerValue1 == 0 && millis() - timeSinceLastChange1 > piezoRetriggerBuffer) {
+  if (piezoValue1 > 400 && lastTriggerValue1 == 0 && millis() - timeSinceLastChange1 > piezoRetriggerBuffer) {
     timeSinceLastChange1 = millis();
     lastTriggerValue1 = 1;
     piezo1Out[1] = 1;
@@ -256,7 +256,7 @@ void ProcessPiezos() {
     Serial.write(piezo1Out, 3);
     digitalWrite(13, LOW);
   }
-  if (piezoValue2 > 100 && lastTriggerValue2 == 0 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
+  if (piezoValue2 > 400 && lastTriggerValue2 == 0 && millis() - timeSinceLastChange2 > piezoRetriggerBuffer) {
     timeSinceLastChange2 = millis();
     lastTriggerValue2 = 1;
     piezo2Out[1] = 1;
@@ -271,7 +271,7 @@ void ProcessPiezos() {
     digitalWrite(13, LOW);
   }
 
-  if (piezoValue3 > 100 && lastTriggerValue3 == 0 && millis() - timeSinceLastChange3 > piezoRetriggerBuffer) {
+  if (piezoValue3 > 400 && lastTriggerValue3 == 0 && millis() - timeSinceLastChange3 > piezoRetriggerBuffer) {
     timeSinceLastChange3 = millis();
     lastTriggerValue3 = 1;
     piezo3Out[1] = 1;
@@ -286,7 +286,7 @@ void ProcessPiezos() {
     digitalWrite(13, LOW);
   }
 
-  if (piezoValue4 > 100 && lastTriggerValue4 == 0 && millis() - timeSinceLastChange4 > piezoRetriggerBuffer) {
+  if (piezoValue4 > 400 && lastTriggerValue4 == 0 && millis() - timeSinceLastChange4 > piezoRetriggerBuffer) {
     timeSinceLastChange4 = millis();
     lastTriggerValue4 = 1;
     piezo4Out[1] = 1;
@@ -301,7 +301,7 @@ void ProcessPiezos() {
     digitalWrite(13, LOW);
   }
 
-  if (piezoValue5 > 100 && lastTriggerValue5 == 0 && millis() - timeSinceLastChange5 > piezoRetriggerBuffer) {
+  if (piezoValue5 > 400 && lastTriggerValue5 == 0 && millis() - timeSinceLastChange5 > piezoRetriggerBuffer) {
     timeSinceLastChange5 = millis();
     lastTriggerValue5 = 1;
     piezo5Out[1] = 1;
@@ -359,18 +359,18 @@ void StateMachine() {
       state = 1;
       stateOut[1] = state;
       Serial.write(stateOut, 3);
-      targetR1 = 0;
+      targetR1 = 255;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
-      targetG1 = 0;
+      targetG1 = 255;
       additionG1 = (targetG1 - g1) / (255 * slowFactor);
-      targetB1 = 255;
+      targetB1 = 0;
       additionB1 = (targetB1 - b1) / (255 * slowFactor);
 
-      targetR2 = 0;
+      targetR2 = 255;
       additionR2 = (targetR2 - r2) / (255 * slowFactor);
-      targetG2 = 255;
+      targetG2 = 50;
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
-      targetB2 = 0;
+      targetB2 = 255;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
     }
     if (piezoAverage <= 0) {
@@ -378,47 +378,9 @@ void StateMachine() {
       state = 0;
       stateOut[1] = state;
       Serial.write(stateOut, 3);
-      targetR1 = 0;
-      additionR1 = (targetR1 - r1) / (255 * slowFactor);
-      targetG1 = 0;
-      additionG1 = (targetG1 - g1) / (255 * slowFactor);
-      targetB1 = 255;
-      additionB1 = (targetB1 - b1) / (255 * slowFactor);
-
-      targetR2 = 0;
-      additionR2 = (targetR2 - r2) / (255 * slowFactor);
-      targetG2 = 0;
-      additionG2 = (targetG2 - g2) / (255 * slowFactor);
-      targetB2 = 255;
-      additionB2 = (targetB2 - b2) / (255 * slowFactor);
-    }
-    if (piezoAverage > 0.70) {
-      //heave state
-      state = 3;
-      stateOut[1] = state;
-      Serial.write(stateOut, 3);
       targetR1 = 255;
       additionR1 = (targetR1 - r1) / (255 * slowFactor);
-      targetG1 = 0;
-      additionG1 = (targetG1 - g1) / (255 * slowFactor);
-      targetB1 = 0;
-      additionB1 = (targetB1 - b1) / (255 * slowFactor);
-
-      targetR2 = 255;
-      additionR2 = (targetR2 - r2) / (255 * slowFactor);
-      targetG2 = 0;
-      additionG2 = (targetG2 - g2) / (255 * slowFactor);
-      targetB2 = 0;
-      additionB2 = (targetB2 - b2) / (255 * slowFactor);
-    }
-    if (0.20 < piezoAverage && piezoAverage <= 0.70) {
-      //medium state
-      state = 2;
-      stateOut[1] = state;
-      Serial.write(stateOut, 3);
-      targetR1 = 255;
-      additionR1 = (targetR1 - r1) / (255 * slowFactor);
-      targetG1 = 0;
+      targetG1 = 255;
       additionG1 = (targetG1 - g1) / (255 * slowFactor);
       targetB1 = 0;
       additionB1 = (targetB1 - b1) / (255 * slowFactor);
@@ -428,6 +390,44 @@ void StateMachine() {
       targetG2 = 255;
       additionG2 = (targetG2 - g2) / (255 * slowFactor);
       targetB2 = 0;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+    }
+    if (piezoAverage > 0.50) {
+      //heave state
+      state = 3;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
+      targetR1 = 127;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 255;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 127;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 255;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 255;
+      additionB2 = (targetB2 - b2) / (255 * slowFactor);
+    }
+    if (0.20 < piezoAverage && piezoAverage <= 0.50) {
+      //medium state
+      state = 2;
+      stateOut[1] = state;
+      Serial.write(stateOut, 3);
+      targetR1 = 127;
+      additionR1 = (targetR1 - r1) / (255 * slowFactor);
+      targetG1 = 255;
+      additionG1 = (targetG1 - g1) / (255 * slowFactor);
+      targetB1 = 255;
+      additionB1 = (targetB1 - b1) / (255 * slowFactor);
+
+      targetR2 = 127;
+      additionR2 = (targetR2 - r2) / (255 * slowFactor);
+      targetG2 = 100;
+      additionG2 = (targetG2 - g2) / (255 * slowFactor);
+      targetB2 = 255;
       additionB2 = (targetB2 - b2) / (255 * slowFactor);
     }
   }
@@ -438,16 +438,16 @@ void UpdateLeds() {
     r1 += additionR1;
   } else if (r1 >= 255) {
     r1 = 255;
-  } else if (r1 <= 0) {
-    r1 = 0;
+  } else if (r1 <= 127) {
+    r1 = 127;
   }
 
   if (g1 != targetG1) {
     g1 += additionG1;
   } else if (g1 >= 255) {
     g1 = 255;
-  } else if (g1 <= 0) {
-    g1 = 0;
+  } else if (g1 <= 50) {
+    g1 = 50;
   }
 
   if (b1 != targetB1) {
@@ -462,16 +462,16 @@ void UpdateLeds() {
     r2 += additionR2;
   } else if (r2 >= 255) {
     r2 = 255;
-  } else if (r2 <= 0) {
-    r2 = 0;
+  } else if (r2 <= 127) {
+    r2 = 127;
   }
 
   if (g2 != targetG2) {
     g2 += additionG2;
   } else if (g2 >= 255) {
     g2 = 255;
-  } else if (g2 <= 0) {
-    g2 = 0;
+  } else if (g2 <= 50) {
+    g2 = 50;
   }
 
   if (b2 != targetB2) {
