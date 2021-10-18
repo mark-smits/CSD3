@@ -3,7 +3,7 @@ Teensy code for ChimeTime can be found here. To connect in MAX MSP load the COM 
 Contents:
 
 ChimeTime_full.ino
-All functionality combined into one Arduino file. This is the (in progress) code that the Teensy will run for ChimeTime.
+All functionality combined into one Arduino file. This is the code that the Teensy will run for ChimeTime.
 
 ChimeTime_full_50msSustainedTrigger
 Sends piezo data as a stream instead of single 1 and 0 per trigger. Streams 1 for 50ms when triggered, then continuously sends 0's. OUTDATED compared ChimeTime_full.ino and only for reference on the streaming method.
